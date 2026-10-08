@@ -1,3 +1,4 @@
+import html
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -165,15 +166,18 @@ elif page=='🏷️ Nhóm sản phẩm':
                     if exists:st.error('Nhóm đã tồn tại.')
                     else:st.session_state['show_group_add']=False;st.rerun()
         if st.button('Đóng',key='close_group_v25'):st.session_state['show_group_add']=False;st.rerun()
-    groups=load_table('product_groups'); groups['sort_id']=range(len(groups)); groups=groups.sort_values('sort_id',ascending=False).reset_index(drop=True)
+    groups=load_table('product_groups'); groups=groups.sort_values(['created_at','name'],ascending=[False,False],kind='stable').reset_index(drop=True)
     st.subheader('Danh sách nhóm sản phẩm')
     filt=st.text_input('Nhóm sản phẩm',placeholder='Lọc theo tên nhóm',key='group_filter_25')
     if filt:groups=groups[groups['name'].str.contains(filt,case=False,regex=False)]
     st.caption(f'Hiển thị {len(groups)} nhóm')
-    header=st.columns([0.6,6,1.2]);header[0].markdown('**STT**');header[1].markdown('**Nhóm sản phẩm**');header[2].markdown('**Thao tác**')
+    with st.expander('⚙️ Điều chỉnh độ rộng cột',expanded=False):
+        g_stt=st.slider('Độ rộng STT',1,5,1,key='g_stt_width');g_group=st.slider('Độ rộng Nhóm sản phẩm',2,12,6,key='g_group_width')
+    g_widths=[g_stt,g_group,2]
+    header=st.columns(g_widths);header[0].markdown('**STT**');header[1].markdown('**Nhóm sản phẩm**');header[2].markdown('**Thao tác**')
     for pos,(_,r) in enumerate(groups.iterrows(),1):
-        gid=str(r['name']);name=str(r['name']);a,b,c=st.columns([0.6,6,1.2],vertical_alignment='center')
-        a.write(pos);b.write(name)
+        gid=str(r['name']);name=str(r['name']);a,b,c=st.columns(g_widths,vertical_alignment='center')
+        a.write(pos);b.markdown(f'<div title="{html.escape(name,quote=True)}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{html.escape(name)}</div>',unsafe_allow_html=True)
         edit_btn,delete_btn=c.columns(2)
         if edit_btn.button('✎',key=f'ge_{gid}',help='Sửa nhóm'):
             st.session_state['group_edit_id_v25']=gid;st.session_state['group_delete_id_v25']=None
@@ -297,7 +301,10 @@ elif page=='📚 Danh mục sản phẩm':
             if term:df=df[df[field].fillna('').astype(str).str.contains(term,case=False,regex=False)]
         df=df.sort_values('id',ascending=False)
         st.caption(f'Hiển thị {len(df)} sản phẩm')
-        header=st.columns([0.55,2,1.4,3,0.9]);
+        with st.expander('⚙️ Điều chỉnh độ rộng cột',expanded=False):
+            p_stt=st.slider('Độ rộng STT',1,5,1,key='p_stt_width');p_group=st.slider('Độ rộng Nhóm sản phẩm',2,12,4,key='p_group_width')
+        p_widths=[p_stt,p_group,3,6,2]
+        header=st.columns(p_widths);
         for col,label in zip(header,['STT','Nhóm sản phẩm','SKU','Tên hàng hóa','Thao tác']):col.markdown('**'+label+'**')
         # Render in pages to avoid dozens of heavy interactive widgets.
         page_size=20
@@ -305,8 +312,8 @@ elif page=='📚 Danh mục sản phẩm':
         current=st.number_input('Trang',min_value=1,max_value=pages,value=1,key='product_page_v25')
         view=df.iloc[(current-1)*page_size:current*page_size]
         for pos,(_,r) in enumerate(view.iterrows(),(current-1)*page_size+1):
-            pid=int(r['id']);a,b,c,d,e=st.columns([0.55,2,1.4,3,0.9],vertical_alignment='center')
-            a.write(pos);b.write(str(r['product_group']));c.write(str(r['sku']));d.write(str(r['product_name']))
+            pid=int(r['id']);a,b,c,d,e=st.columns(p_widths,vertical_alignment='center')
+            a.write(pos);b.markdown(f'<div title="{html.escape(str(r["product_group"]),quote=True)}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{html.escape(str(r["product_group"]))}</div>',unsafe_allow_html=True);c.write(str(r['sku']));d.write(str(r['product_name']))
             eb,db=e.columns(2)
             if eb.button('✎',key=f'pe_{pid}',help='Sửa sản phẩm'):
                 st.session_state['product_edit_id_v25']=pid;st.session_state['product_delete_id_v25']=None
@@ -326,6 +333,8 @@ elif page=='📚 Danh mục sản phẩm':
                             try:
                                 old=str(r['sku'])
                                 with conn() as cx:
+                                    if sku_new != old and cx.execute('SELECT 1 FROM products WHERE sku=? AND id<>?',(sku_new,pid)).fetchone():
+                                        raise sqlite3.IntegrityError('SKU đã tồn tại')
                                     cx.execute('UPDATE products SET product_group=?,sku=?,product_name=?,updated_at=? WHERE id=?',(grp,sku_new,name_new,datetime.now().isoformat(timespec='seconds'),pid))
                                     if old!=sku_new:
                                         for table in ['sku_policy','snapshots','po_items']:
