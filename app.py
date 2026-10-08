@@ -46,15 +46,15 @@ with conn() as _c:
 st.markdown("""<style>
 :root{--brand:#205DA8;--cyan:#50BEC5;--ink:#183252}
 .stApp{background:#f7f9fc}
-.block-container{padding-top:3.95rem!important;padding-bottom:1.5rem!important;max-width:100%!important;padding-left:1.4rem!important;padding-right:1.4rem!important}
+.block-container{padding-top:5.15rem!important;padding-bottom:1.5rem!important;max-width:100%!important;padding-left:1.4rem!important;padding-right:1.4rem!important}
 section[data-testid="stSidebar"]{width:190px!important;min-width:190px!important;background:#edf4f9;border-right:1px solid #d9e5ef}
 section[data-testid="stSidebar"]>div{width:190px!important}
 [data-testid="stMetric"]{background:white;border:1px solid #dbe4ed;border-radius:8px;padding:10px}
 .stButton>button[kind="primary"]{background:#205DA8;border-color:#205DA8}
 .stButton>button{border-radius:5px}
 .stDataFrame{background:#fff}
-.nefa-topbar{position:fixed;top:2.8rem;left:190px;right:0;height:58px;z-index:999;background:white;border-bottom:1px solid #dce6ef;display:flex;align-items:center;gap:18px;padding:5px 26px;box-shadow:0 1px 3px #dce5ee}
-.nefa-topbar img{width:175px;height:50px;object-fit:contain;object-position:left center;flex-shrink:0}
+.nefa-topbar{position:fixed;top:2.8rem;left:190px;right:0;height:76px;z-index:999;background:white;border-bottom:1px solid #dce6ef;display:flex;align-items:center;gap:18px;padding:5px 26px;box-shadow:0 1px 3px #dce5ee}
+.nefa-topbar img{display:block;width:205px;max-width:205px;height:64px;object-fit:contain;object-position:center;flex-shrink:0;overflow:visible}
 .nefa-topbar strong{color:#183252;font-size:17px}.nefa-topbar span{font-size:12px;color:#637d96;margin-left:auto}
 h1,h2,h3{color:#183252}
 </style>""",unsafe_allow_html=True)
@@ -165,14 +165,14 @@ elif page=='🏷️ Nhóm sản phẩm':
                     if exists:st.error('Nhóm đã tồn tại.')
                     else:st.session_state['show_group_add']=False;st.rerun()
         if st.button('Đóng',key='close_group_v25'):st.session_state['show_group_add']=False;st.rerun()
-    groups=load_table('product_groups').sort_values('id',ascending=False).reset_index(drop=True)
+    groups=load_table('product_groups'); groups['sort_id']=range(len(groups)); groups=groups.sort_values('sort_id',ascending=False).reset_index(drop=True)
     st.subheader('Danh sách nhóm sản phẩm')
     filt=st.text_input('Nhóm sản phẩm',placeholder='Lọc theo tên nhóm',key='group_filter_25')
     if filt:groups=groups[groups['name'].str.contains(filt,case=False,regex=False)]
     st.caption(f'Hiển thị {len(groups)} nhóm')
     header=st.columns([0.6,6,1.2]);header[0].markdown('**STT**');header[1].markdown('**Nhóm sản phẩm**');header[2].markdown('**Thao tác**')
     for pos,(_,r) in enumerate(groups.iterrows(),1):
-        gid=int(r['id']);name=str(r['name']);a,b,c=st.columns([0.6,6,1.2],vertical_alignment='center')
+        gid=str(r['name']);name=str(r['name']);a,b,c=st.columns([0.6,6,1.2],vertical_alignment='center')
         a.write(pos);b.write(name)
         edit_btn,delete_btn=c.columns(2)
         if edit_btn.button('✎',key=f'ge_{gid}',help='Sửa nhóm'):
@@ -188,7 +188,7 @@ elif page=='🏷️ Nhóm sản phẩm':
                     else:
                         try:
                             with conn() as cx:
-                                cx.execute('UPDATE product_groups SET name=? WHERE id=?',(new_name,gid))
+                                cx.execute('UPDATE product_groups SET name=? WHERE name=?',(new_name,gid))
                                 cx.execute('UPDATE products SET product_group=? WHERE product_group=?',(new_name,name))
                                 cx.execute('UPDATE snapshots SET product_group=? WHERE product_group=?',(new_name,name))
                             st.session_state['group_edit_id_v25']=None;st.rerun()
@@ -199,7 +199,7 @@ elif page=='🏷️ Nhóm sản phẩm':
             if count:st.warning(f'Nhóm {name} có {count} sản phẩm. Cần chuyển sản phẩm sang nhóm khác trước khi xóa.')
             else:
                 if st.button('Xác nhận xóa nhóm '+name,key=f'gconfirm_{gid}'):
-                    with conn() as cx:cx.execute('DELETE FROM product_groups WHERE id=?',(gid,))
+                    with conn() as cx:cx.execute('DELETE FROM product_groups WHERE name=?',(gid,))
                     st.session_state['group_delete_id_v25']=None;st.rerun()
             if st.button('Hủy xóa',key=f'gcancel_{gid}'):st.session_state['group_delete_id_v25']=None;st.rerun()
 
